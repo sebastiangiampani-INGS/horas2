@@ -5,7 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sistema de Gestión Docente</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">// --- PATCH: mejorar detección de encabezados y soporte de columna única "Docente" ---
+    HEADER_ALIASES = {
+      grado: ['grado','grados','curso','año','anio','nivel'],
+      materia: ['materia','asignatura','espacio curricular','area','área'],
+      horas: ['cantidad de hora','cantidad de horas','cant horas','cantidad','horas','hs','carga horaria','canti dad hora','canti\\n dad\\n hora','canti_dad_hora'],
+      titular: ['docente titular','titular'],
+      suplente: ['docente suplente','suplente'],
+      docente: ['docente','profesor','profesora','nombre docente','apellido y nombre','ap. y nom.'],
+      tipo: ['tipo de hora','tipo','modalidad','caracter','carácter','programatica','extraprogramatica','programática','extraprogramática']
+    };
+
+    detectHeaders = function(headers){
+      const map = {};
+      const lower = headers.map(h=>normLower(h));
+      for(const key in HEADER_ALIASES){
+        const candidates = HEADER_ALIASES[key];
+        let idx = lower.findIndex(h => candidates.some(a => normLower(a)===h));
+        if(idx===-1){
+          idx = lower.findIndex(h => candidates.some(a => h.replace(/\\s+/g,' ').includes(normLower(a))));
+        }
+        map[key] = idx;
+      }
+      return map;
+    }
+
+    rolEnFila = function(row, nombre){
+      const tit = MAPPING.titular!==-1 ? normLower(row[MAPPING.titular]||'') : '';
+      const sup = MAPPING.suplente!==-1 ? normLower(row[MAPPING.suplente]||'') : '';
+      const unico = MAPPING.docente!==-1 ? normLower(row[MAPPING.docente]||'') : '';
+      const n = normLower(nombre);
+      const roles = [];
+      if(tit && tit.includes(n)) roles.push('Titular');
+      if(sup && sup.includes(n)) roles.push('Suplente');
+      if(!roles.length && unico && unico.includes(n)) roles.push('Docente');
+      return roles;
+    }
+
+    uniqueDocentes = function(rows){
+      const set = new Set();
+      rows.forEach(r=>{
+        const pushName = v => { if(v) set.add(normalize(v)); };
+        if(MAPPING.titular!==-1) pushName(r[MAPPING.titular]);
+        if(MAPPING.suplente!==-1) pushName(r[MAPPING.suplente]);
+        if(MAPPING.docente!==-1) pushName(r[MAPPING.docente]);
+      });
+      return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
+    }
+
+    // Parchear cargarDesdeObjetos para tolerar bases con única columna "Docente"
+    const _orig_cargarDesdeObjetos = cargarDesdeObjetos;
+    cargarDesdeObjetos = function(rows, fields){
+      MAPPING = detectHeaders(fields);
+      const requiredBase = ['grado','materia','horas','tipo'];
+      const requiredRol = (MAPPING.titular===-1 && MAPPING.suplente===-1) ? ['docente'] : [];
+      const faltantes = [...requiredBase, ...requiredRol].filter(k=>MAPPING[k]===-1);
+      if(faltantes.length){
+        el('status').innerHTML = 'Encabezados faltantes o no reconocidos: <b>'+faltantes.join(', ')+'</b>.';
+      } else {
+        el('status').textContent = '';
+      }
+      RAW_ROWS = rows.map(row => fields.map(h=>row[h]));
+      const docentes = uniqueDocentes(RAW_ROWS);
+      renderDocentes(docentes);
+      if(!docentes.length){
+        el('status').innerHTML = '<span class="danger">No detecté docentes. Verificá que exista una columna "Docente", o "Docente Titular/Suplente".</span>';
+      } else {
+        el('status').textContent = `Datos listos. Docentes detectados: ${docentes.length}.`;
+      }
+    }
+
+    // Ajustar texto del rol cuando no hay distinción Titular/Suplente
+    const _orig_filtrarPorDocente = filtrarPorDocente;
+    filtrarPorDocente = function(nombre, opts){
+      const body = tabla.querySelector('tbody');
+      body.innerHTML = '';
+      let total=0, prog=0, extra=0, rowsOut=[];
+
+      RAW_ROWS.forEach(r=>{
+        const roles = rolEnFila(r, nombre);
+        const esTit = roles.includ
   <style>
     :root{
       --bg:#0f172a; /* slate-900 */
