@@ -62,17 +62,6 @@
       <section class="card">
         <div class="controls">
           <label class="pill">
-            <input id="csvFile" type="file" accept=".csv,.tsv,.txt,application/vnd.ms-excel" />
-          </label>
-          <label class="pill" style="min-width:280px;flex:1">
-            URL CSV:
-            <input id="csvUrl" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2IAQDs41193q-zhgPprpLrbLgXTNem6h4vRQpgsKXZeWO2gpzSWJOQBZk2qtuua5c0aXkXAH1yoL/pub?gid=300900649&single=true&output=csv" placeholder="https://docs.google.com/spreadsheets/.../export?format=csv&gid=..." style="width:100%;margin-left:8px" />
-          </label>
-          <button id="cargarUrlBtn" type="button">🌐 Cargar desde URL</button>
-          <label class="pill">
-            <button id="pegarBtn" type="button">📋 Pegar datos</button>
-          </label>
-          <label class="pill">
             Docente:
             <select id="docenteSelect" title="Seleccioná un docente" disabled></select>
           </label>
@@ -84,7 +73,7 @@
           </label>
           <button id="descargarBtn" aria-disabled="true" title="Descargar resultados" disabled>📥 Descargar CSV</button>
         </div>
-        <p class="hint">Este dashboard usa únicamente <strong>URL pública de Google Sheets publicada como CSV</strong>. En Sheets: Archivo → Compartir → Publicar en la Web → Hoja → CSV, copiá el link y cargalo.</p> Encabezados esperados (insensibles a mayúsculas/acentos): <em>Grado</em>, <em>Materia</em>, <em>Cantidad de Hora(s)</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>.</p>
+        <p class="hint">Fuente <b>en línea</b> (solo lectura): Google Sheets publicado como CSV. La app se actualiza automáticamente con la URL fijada en el código. No hay carga manual.</p> Encabezados esperados (insensibles a mayúsculas/acentos): <em>Grado</em>, <em>Materia</em>, <em>Cantidad de Hora(s)</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>.</p>
         <div id="status" class="hint"></div>
         <div class="kpi">
           <div class="box"><div class="label">Total de horas</div><div id="kTotal" class="value">—</div></div>
@@ -148,145 +137,9 @@
     let MAPPING = {};
 
     const el = id => document.getElementById(id);
-    const docenteSelect = el('docenteSelect');
-    const tabla = el('tabla');
-
-    function detectHeaders(headers){
-      const map = {};
-      const lower = headers.map(h=>normLower(h));
-      for(const key in HEADER_ALIASES){
-        const candidates = HEADER_ALIASES[key];
-        let idx = lower.findIndex(h => candidates.some(a => normLower(a)===h));
-        if(idx===-1){
-          // fuzzy contains
-          idx = lower.findIndex(h => candidates.some(a => h.includes(normLower(a))));
-        }
-        map[key] = idx;
-      }
-      return map;
-    }
-
-    function parseNumber(x){
-      if(x==null) return 0;
-      const s = x.toString().replace(/,/g,'.').match(/-?\d+(?:[\.,]\d+)?/);
-      return s ? Number(s[0].replace(',','.')) : 0;
-    }
-
-    function tipoCanonico(s){
-      const t = normLower(s);
-      if(t.includes('extra')) return 'Extraprogramática';
-      return 'Programática';
-    }
-
-    function rolEnFila(row, nombre){
-      const tit = normLower(row[MAPPING.titular]||'');
-      const sup = normLower(row[MAPPING.suplente]||'');
-      const n = normLower(nombre);
-      const roles = [];
-      if(tit && tit.includes(n)) roles.push('Titular');
-      if(sup && sup.includes(n)) roles.push('Suplente');
-      return roles;
-    }
-
-    function uniqueDocentes(rows){
-      const set = new Set();
-      rows.forEach(r=>{
-        const a = r[MAPPING.titular];
-        const b = r[MAPPING.suplente];
-        if(a) set.add(normalize(a));
-        if(b) set.add(normalize(b));
-      });
-      return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
-    }
-
-    function renderDocentes(options){
-      docenteSelect.innerHTML = '<option value="" disabled selected>Elegí un docente…</option>' +
-        options.map(o=>`<option>${o}</option>`).join('');
-      docenteSelect.disabled = options.length===0;
-      el('descargarBtn').disabled = true;
-    }
-
-    function filtrarPorDocente(nombre, {inclTit, inclSup}){
-      const body = tabla.querySelector('tbody');
-      body.innerHTML = '';
-      let total=0, prog=0, extra=0, rowsOut=[];
-
-      RAW_ROWS.forEach(r=>{
-        const roles = rolEnFila(r, nombre);
-        const esTit = roles.includes('Titular');
-        const esSup = roles.includes('Suplente');
-        if((inclTit && esTit) || (inclSup && esSup)){
-          const grado = r[MAPPING.grado] ?? '';
-          const materia = r[MAPPING.materia] ?? '';
-          const horas = parseNumber(r[MAPPING.horas]);
-          const tipo = tipoCanonico(r[MAPPING.tipo] ?? 'Programática');
-          const rol = esTit && esSup ? 'Titular y Suplente' : esTit ? 'Titular' : 'Suplente';
-
-          total += horas;
-          if(tipo.startsWith('Progr')) prog += horas; else extra += horas;
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${grado}</td>
-            <td>${materia}</td>
-            <td class="nowrap">${horas}</td>
-            <td>${tipo === 'Programática' ? `<span class="tag prog">${tipo}</span>` : `<span class="tag extra">${tipo}</span>`}</td>
-            <td>${rol}</td>
-          `;
-          body.appendChild(tr);
-
-          rowsOut.push({Grado:grado, Materia:materia, Horas:horas, Tipo:tipo, Rol:rol});
-        }
-      });
-
-      el('kTotal').textContent = Intl.NumberFormat('es-AR').format(total);
-      el('kProg').textContent = Intl.NumberFormat('es-AR').format(prog);
-      el('kExtra').textContent = Intl.NumberFormat('es-AR').format(extra);
-
-      tabla.classList.toggle('hidden', body.children.length===0);
-
-      // Enable download
-      const btn = el('descargarBtn');
-      btn.disabled = body.children.length===0;
-      btn.onclick = () => descargarCSV(nombre, rowsOut, {total, prog, extra});
-    }
-
-    function descargarCSV(nombre, rows, sums){
-      const encabezados = ['Docente','Grado','Materia','Horas','Tipo','Rol'];
-      const data = rows.map(r=>[nombre,r.Grado,r.Materia,r.Horas,r.Tipo,r.Rol]);
-      data.unshift(encabezados);
-      data.push([]);
-      data.push(['TOTAL','','',sums.total,'', '']);
-      data.push(['Programaticas','','',sums.prog,'','']);
-      data.push(['Extraprogramaticas','','',sums.extra,'','']);
-      const csv = data.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `reporte_${nombre.replace(/\s+/g,'_')}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    // util
-    async function cargarDesdeURL(url){
-      try{
-        el('status').textContent = 'Descargando CSV…';
-        const res = await fetch(url,{cache:'no-store'});
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const txt = await res.text();
-        Papa.parse(txt,{header:true,skipEmptyLines:true,complete:(r)=>{
-          if(!r.meta || !r.meta.fields) { el('status').innerHTML = '<span class="danger">No pude leer encabezados del CSV remoto.</span>'; return; }
-          cargarDesdeObjetos(r.data, r.meta.fields);
-          el('status').textContent = 'CSV remoto cargado.';
-        }});
-      }catch(e){
-        el('status').innerHTML = '<span class="danger">Falla al descargar CSV: '+(e?.message||e)+'</span>';
-      }
-    }
-
-    // Event wiring
-    function cargarDesdeObjetos(rows, fields){
+    const SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2IAQDs41193q-zhgPprpLrbLgXTNem6h4vRQpgsKXZeWO2gpzSWJOQBZk2qtuua5c0aXkXAH1yoL/pub?gid=300900649&single=true&output=csv";
+    
+    function cargarDesdeObjetos(rows, fields)(rows, fields){
       MAPPING = detectHeaders(fields);
       const required = ['grado','materia','horas','titular','suplente','tipo'];
       const faltantes = required.filter(k=>MAPPING[k]===-1);
@@ -309,16 +162,10 @@
       });
     });
 
-    // URL loader
-    el('cargarUrlBtn').addEventListener('click',()=>{
-      const u = (el('csvUrl').value||'').trim();
-      if(!u){ el('status').innerHTML = '<span class="danger">Pegá una URL de CSV publicada de Google Sheets.</span>'; return; }
-      cargarDesdeURL(u);
-    });
-
-    // Auto-carga al abrir con la URL por defecto
+    // Auto-carga al abrir con la URL fija
     window.addEventListener('DOMContentLoaded', ()=>{
-      const u = (el('csvUrl').value||'').trim();
+      cargarDesdeURL(SHEETS_CSV_URL);
+    });
       if(u) cargarDesdeURL(u);
     });
 
