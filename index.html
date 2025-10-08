@@ -4,11 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sistema de Gestión Docente</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <style>
-    :root{
-      --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; --good:#22c55e; --warn:#f59e0b;
-    }
+    :root{ --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; --good:#22c55e; --warn:#f59e0b; }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#0b1220,#0f172a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100dvh}
     header{padding:16px 20px;border-bottom:1px solid #1f2937;background:rgba(17,24,39,.6);backdrop-filter:saturate(140%) blur(6px);position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px}
@@ -46,6 +43,7 @@
     <img class="logo" src="./logo.png" alt="Logo Escuela" />
     <h1>Sistema de Gestión Docente</h1>
   </header>
+
   <main>
     <div class="grid">
       <section class="card">
@@ -63,15 +61,17 @@
           <button id="descargarBtn" aria-disabled="true" title="Descargar resultados" disabled>📥 Descargar CSV</button>
         </div>
         <p class="hint">
-          Fuente <b>en línea</b> (solo lectura): Google Sheets publicado como <i>página HTML</i>.
+          Fuente <b>en línea</b> (solo lectura) desde Google Sheets <i>publicado como página</i>. <br/>
           Encabezados esperados: <em>Grado</em>, <em>Materia</em>, <em>Cantidad de Hora(s)</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>.
         </p>
         <div id="status" class="hint"></div>
+
         <div class="kpi">
           <div class="box"><div class="label">Total de horas</div><div id="kTotal" class="value">—</div></div>
           <div class="box"><div class="label">Programáticas</div><div id="kProg" class="value">—</div></div>
           <div class="box"><div class="label">Extraprogramáticas</div><div id="kExtra" class="value">—</div></div>
         </div>
+
         <div style="margin-top:16px;overflow:auto">
           <table id="tabla" class="hidden">
             <thead>
@@ -86,14 +86,15 @@
             <tbody></tbody>
           </table>
         </div>
+
         <div class="footer">Todo sucede en tu navegador. No se sube nada a servidores.</div>
       </section>
+
       <aside class="card">
         <h3 style="margin-top:0">Notas</h3>
         <ul>
-          <li>La app normaliza acentos y mayúsculas en nombres de docentes.</li>
-          <li>Si no hay columnas Titular/Suplente, igual funciona usando una sola columna «Docente».</li>
-          <li>Si cambian la hoja, actualicen el enlace en el código.</li>
+          <li>Si la hoja no separa Titular/Suplente, usa una sola columna «Docente».</li>
+          <li>Para cambiar la fuente, reemplazá la URL en el código.</li>
         </ul>
       </aside>
     </div>
@@ -101,11 +102,12 @@
 
   <script>
     // ===== Config =====
-    const SHEETS_HTML_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2IAQDs41193q-zhgPprpLrbLgXTNem6h4vRQpgsKXZeWO2gpzSWJOQBZk2qtuua5c0aXkXAH1yoL/pubhtml";
+    const SHEETS_PUBHTML = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH2IAQDs41193q-zhgPprpLrbLgXTNem6h4vRQpgsKXZeWO2gpzSWJOQBZk2qtuua5c0aXkXAH1yoL/pubhtml";
 
     // ===== Helpers =====
-    const normalize = (s='') => s.toString().replace(/^\uFEFF/, '').normalize('NFD').replace(/\p{Diacritic}/gu,'').trim();
+    const normalize = (s='') => s.toString().replace(/^\\uFEFF/, '').normalize('NFD').replace(/\\p{Diacritic}/gu,'').trim();
     const normLower = (s='') => normalize(s).toLowerCase();
+    const el = id => document.getElementById(id);
 
     const HEADER_ALIASES = {
       grado:   ['grado'],
@@ -120,19 +122,13 @@
     let RAW_ROWS = []; // matriz de datos crudos por índice de columnas
     let MAPPING = {};  // mapeo de claves -> índice
 
-    const el = id => document.getElementById(id);
-    const docenteSelect = el('docenteSelect');
-    const tabla = el('tabla');
-
     function detectHeaders(headers){
       const lower = headers.map(h=>normLower(h));
       const map = {};
       for(const key in HEADER_ALIASES){
         const candidates = HEADER_ALIASES[key].map(c=>normLower(c));
         let idx = lower.findIndex(h=>candidates.includes(h));
-        if(idx===-1){ // plan B: inclusión
-          idx = lower.findIndex(h=>candidates.some(c=>h.includes(c)));
-        }
+        if(idx===-1){ idx = lower.findIndex(h=>candidates.some(c=>h.includes(c))); }
         map[key] = idx;
       }
       return map;
@@ -140,14 +136,13 @@
 
     function parseNumber(x){
       if(x==null) return 0;
-      const s = x.toString().replace(/,/g,'.').match(/-?\d+(?:[\.,]\d+)?/);
+      const s = x.toString().replace(/,/g,'.').match(/-?\\d+(?:[\\.,]\\d+)?/);
       return s ? Number(s[0].replace(',','.')) : 0;
     }
 
     function tipoCanonico(s){
       const t = normLower(s);
-      if(t.includes('extra')) return 'Extraprogramática';
-      return 'Programática';
+      return t.includes('extra') ? 'Extraprogramática' : 'Programática';
     }
 
     function rolEnFila(row, nombre){
@@ -174,12 +169,14 @@
     }
 
     function renderDocentes(options){
-      docenteSelect.innerHTML = '<option value="" disabled selected>Elegí un docente…</option>' + options.map(o=>`<option>${o}</option>`).join('');
-      docenteSelect.disabled = options.length===0;
-      el('descargarBtn').disabled = true;
+      const sel = document.getElementById('docenteSelect');
+      sel.innerHTML = '<option value=\"\" disabled selected>Elegí un docente…</option>' + options.map(o=>`<option>${o}</option>`).join('');
+      sel.disabled = options.length===0;
+      document.getElementById('descargarBtn').disabled = true;
     }
 
     function filtrarPorDocente(nombre, {inclTit, inclSup}){
+      const tabla = document.getElementById('tabla');
       const body = tabla.querySelector('tbody');
       body.innerHTML = '';
       let total=0, prog=0, extra=0, rowsOut=[];
@@ -213,13 +210,13 @@
         }
       });
 
-      el('kTotal').textContent = Intl.NumberFormat('es-AR').format(total);
-      el('kProg').textContent = Intl.NumberFormat('es-AR').format(prog);
-      el('kExtra').textContent = Intl.NumberFormat('es-AR').format(extra);
+      document.getElementById('kTotal').textContent = Intl.NumberFormat('es-AR').format(total);
+      document.getElementById('kProg').textContent = Intl.NumberFormat('es-AR').format(prog);
+      document.getElementById('kExtra').textContent = Intl.NumberFormat('es-AR').format(extra);
 
       tabla.classList.toggle('hidden', body.children.length===0);
 
-      const btn = el('descargarBtn');
+      const btn = document.getElementById('descargarBtn');
       btn.disabled = body.children.length===0;
       btn.onclick = () => descargarCSV(nombre, rowsOut, {total, prog, extra});
     }
@@ -232,38 +229,59 @@
       data.push(['TOTAL','','',sums.total,'','']);
       data.push(['Programaticas','','',sums.prog,'','']);
       data.push(['Extraprogramaticas','','',sums.extra,'','']);
-      const csv = data.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+      const csv = data.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\\n');
       const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `reporte_${nombre.replace(/\s+/g,'_')}.csv`;
+      a.href = url; a.download = `reporte_${nombre.replace(/\\s+/g,'_')}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     }
 
-    // === Carga desde pubhtml (tabla HTML pública) ===
+    // --- Lectura robusta desde pubhtml ---
+    async function fetchText(url){
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return await res.text();
+    }
+
+    function extractTable(html){
+      const dom = new DOMParser().parseFromString(html, 'text/html');
+      let table = dom.querySelector('table.waffle'); // típico de Google Sheets
+      if(!table) table = dom.querySelector('table'); // fallback
+      return { table, dom };
+    }
+
     async function cargarDesdePubHtml(url){
       try{
         el('status').textContent = 'Descargando tabla…';
-        const res = await fetch(url, {cache:'no-store'});
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const html = await res.text();
-        const dom = new DOMParser().parseFromString(html, 'text/html');
-        // Google Sheets suele usar .waffle; si no, tomamos la primera tabla
-        const table = dom.querySelector('table.waffle, table');
+        const html = await fetchText(url);
+        let { table, dom } = extractTable(html);
+
+        // Si no hay tabla, intentamos seguir el primer iframe
+        if(!table){
+          const ifr = dom.querySelector('iframe, frame');
+          if(!ifr || !ifr.src) throw new Error('No encontré tabla en la página publicada');
+          const iframeHtml = await fetchText(ifr.src);
+          ({ table } = extractTable(iframeHtml));
+        }
+
         if(!table) throw new Error('No encontré tabla en la página publicada');
+
         const rows = Array.from(table.querySelectorAll('tr'))
           .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td => td.innerText.trim()));
+
         if(rows.length < 2) throw new Error('La tabla publicada no tiene datos suficientes');
-        // primera fila = headers
+
         const headers = rows[0];
         const dataRows = rows.slice(1);
-        // convertir a objetos por header
         const objects = dataRows.map(r => {
           const o = {}; headers.forEach((h,i)=> o[h] = r[i]); return o;
         });
+
         prepararDatos(objects, headers);
         el('status').textContent = `Tabla cargada. Filas: ${objects.length}. Encabezados: ${headers.join(' | ')}`;
+
       }catch(e){
         el('status').innerHTML = '<span class="danger">No pude traer la base: '+(e?.message||e)+'</span>';
       }
@@ -271,6 +289,7 @@
 
     function prepararDatos(rows, fields){
       MAPPING = detectHeaders(fields);
+      // requeridos mínimos + rol (Titular/Suplente) o columna única 'Docente'
       const requiredBase = ['grado','materia','horas','tipo'];
       const requiredRol = (MAPPING.titular===-1 && MAPPING.suplente===-1) ? ['docente'] : [];
       const faltantes = [...requiredBase, ...requiredRol].filter(k=>MAPPING[k]===-1);
@@ -283,22 +302,23 @@
     }
 
     // === Eventos ===
-    docenteSelect.addEventListener('change', ()=>{
-      const nombre = docenteSelect.value;
-      filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+    document.getElementById('docenteSelect').addEventListener('change', ()=>{
+      const nombre = document.getElementById('docenteSelect').value;
+      filtrarPorDocente(nombre, {inclTit: document.getElementById('incluyeTitular').checked, inclSup: document.getElementById('incluyeSuplente').checked});
     });
     ['incluyeTitular','incluyeSuplente'].forEach(id=>{
-      el(id).addEventListener('change', ()=>{
-        if(!docenteSelect.value) return;
-        const nombre = docenteSelect.value;
-        filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+      document.getElementById(id).addEventListener('change', ()=>{
+        if(!document.getElementById('docenteSelect').value) return;
+        const nombre = document.getElementById('docenteSelect').value;
+        filtrarPorDocente(nombre, {inclTit: document.getElementById('incluyeTitular').checked, inclSup: document.getElementById('incluyeSuplente').checked});
       });
     });
 
     // === Arranque ===
     window.addEventListener('DOMContentLoaded', ()=>{
-      cargarDesdePubHtml(SHEETS_HTML_URL);
+      cargarDesdePubHtml(SHEETS_PUBHTML);
     });
   </script>
 </body>
 </html>
+
