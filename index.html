@@ -6,7 +6,7 @@
   <title>Sistema de Gestión Docente</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js">// --- PATCH: mejorar detección de encabezados y soporte de columna única "Docente" ---
-    HEADER_ALIASES = {
+    Object.assign(HEADER_ALIASES, {
       grado: ['grado','grados','curso','año','anio','nivel'],
       materia: ['materia','asignatura','espacio curricular','area','área'],
       horas: ['cantidad de hora','cantidad de horas','cant horas','cantidad','horas','hs','carga horaria','canti dad hora','canti\n dad\n hora','canti_dad_hora'],
@@ -14,7 +14,7 @@
       suplente: ['docente suplente','suplente'],
       docente: ['docente','profesor','profesora','nombre docente','apellido y nombre','ap. y nom.'],
       tipo: ['tipo de hora','tipo','modalidad','caracter','carácter','programatica','extraprogramatica','programática','extraprogramática']
-    };
+    });
 
     detectHeaders = function(headers){
       const map = {};
@@ -241,7 +241,7 @@
     const normalize = (s='') => s.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').trim();
     const normLower = (s='') => normalize(s).toLowerCase();
 
-    const HEADER_ALIASES = {
+    const Object.assign(HEADER_ALIASES, {
       grado: ['grado','grados'],
       materia: ['materia','asignatura'],
       horas: ['cantidad de hora','cantidad de horas','cant horas','cantidad','horas','canti dad hora','canti\n dad\n hora','canti_dad_hora'],
@@ -342,4 +342,3 @@
   </script>
 </body>
 </html>
-
