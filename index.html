@@ -269,4 +269,47 @@
           return;
         }
 
-        prepararDatos(rows,
+        prepararDatos(rows, fields);
+        el('status').textContent = `CSV cargado. Filas: ${rows.length}. Encabezados: ${fields.join(' | ')}`;
+      }catch(e){
+        el('status').innerHTML = '<span class="danger">No pude traer la base: '+(e?.message||e)+'</span>';
+      }
+    }
+
+    function prepararDatos(rows, fields){
+      MAPPING = detectHeaders(fields);
+      const requiredBase = ['grado','materia','horas','tipo'];
+      const requiredRol = (MAPPING.titular===-1 && MAPPING.suplente===-1) ? ['docente'] : [];
+      const faltantes = [...requiredBase, ...requiredRol].filter(k=>MAPPING[k]===-1);
+      if(faltantes.length){
+        el('status').innerHTML = 'Encabezados faltantes o no reconocidos: <b>'+faltantes.join(', ')+'</b>.';
+      }
+      RAW_ROWS = rows.map(row => fields.map(h=>row[h]));
+      const docentes = uniqueDocentes(RAW_ROWS);
+      renderDocentes(docentes);
+      if(!docentes.length){
+        el('status').innerHTML += ' · <span class="danger">No detecté docentes. Revisá columnas “Docente”, “Docente Titular” o “Docente Suplente”.</span>';
+      }
+    }
+
+    // ===== Eventos =====
+    const docenteSelect = el('docenteSelect');
+    docenteSelect.addEventListener('change', ()=>{
+      const nombre = docenteSelect.value;
+      if(!nombre) return;
+      filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+    });
+
+    ['incluyeTitular','incluyeSuplente'].forEach(id=>{
+      el(id).addEventListener('change', ()=>{
+        const nombre = docenteSelect.value;
+        if(nombre) filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+      });
+    });
+
+    // Arranque
+    window.addEventListener('DOMContentLoaded', ()=>{ cargarDesdeURL(SHEETS_CSV_URL); });
+  </script>
+</body>
+</html>
+
