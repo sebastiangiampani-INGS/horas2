@@ -5,45 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sistema de Gestión Docente</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <!-- Cargar PapaParse (no pongas código dentro de este tag) -->
+  <!-- IMPORTANTE: este script SOLO carga la librería; no pongas código adentro -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; --good:#22c55e; --warn:#f59e0b; }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#0b1220,#0f172a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100dvh}
-    header{padding:16px 20px;border-bottom:1px solid #1f2937;background:rgba(17,24,39,.6);backdrop-filter:saturate(140%) blur(6px);position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px}
-    header img.logo{height:44px;width:auto;object-fit:contain;border-radius:8px}
+    header{padding:16px 20px;border-bottom:1px solid #1f2937;background:rgba(17,24,39,.6);backdrop-filter:saturate(140%) blur(6px);position:sticky;top:0;z-index:10;display:flex;gap:12px;align-items:center}
+    header img.logo{height:44px;border-radius:8px}
     header h1{margin:0;font-size:clamp(18px,3vw,28px)}
     main{max-width:1100px;margin:24px auto;padding:0 16px 48px}
     .grid{display:grid;grid-template-columns:1fr;gap:16px}
-    @media(min-width:920px){.grid{grid-template-columns:2fr 1fr}}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    @media (min-width:920px){.grid{grid-template-columns:2fr 1fr}}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:16px}
     .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     .pill{border:1px solid #374151;background:#0b1220;color:var(--text);padding:10px 12px;border-radius:12px;display:flex;gap:8px;align-items:center}
-    select, button{all:unset}
-    select{cursor:pointer}
-    button{cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:var(--accent);color:#00121c;font-weight:700}
+    select,button{all:unset} select{cursor:pointer}
+    button{cursor:pointer;padding:10px 14px;border-radius:12px;background:var(--accent);color:#00121c;font-weight:700}
     .hint{color:var(--muted);font-size:13px}
-    table{width:100%;border-collapse:collapse}
-    th, td{padding:10px 8px;border-bottom:1px solid #243244}
-    th{text-align:left;color:#cbd5e1;font-size:13px}
-    td{font-size:14px}
+    table{width:100%;border-collapse:collapse} th,td{padding:10px 8px;border-bottom:1px solid #243244}
+    th{color:#cbd5e1;font-size:13px;text-align:left} td{font-size:14px}
     .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
     .kpi .box{background:#0b1220;border:1px solid #223049;border-radius:14px;padding:12px}
-    .box .label{color:#a1a1aa;font-size:12px}
-    .box .value{font-size:22px;font-weight:700}
+    .box .label{color:#a1a1aa;font-size:12px} .box .value{font-size:22px;font-weight:700}
     .tag{padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}
     .prog{background:rgba(34,197,94,.15);color:var(--good);border:1px solid rgba(34,197,94,.35)}
     .extra{background:rgba(245,158,11,.15);color:var(--warn);border:1px solid rgba(245,158,11,.35)}
-    .footer{margin-top:8px;font-size:12px;color:#9ca3af}
-    .hidden{display:none}
-    .danger{color:#fca5a5}
-    .nowrap{white-space:nowrap}
+    .hidden{display:none} .nowrap{white-space:nowrap} .danger{color:#fca5a5}
   </style>
 </head>
 <body>
   <header>
-    <img class="logo" src="./logo.png" alt="Logo Escuela" />
+    <img class="logo" src="./logo.png" alt="Logo Escuela">
     <h1>Sistema de Gestión Docente</h1>
   </header>
 
@@ -52,16 +45,17 @@
       <section class="card">
         <div class="controls">
           <label class="pill">Docente:
-            <select id="docenteSelect" title="Seleccioná un docente" disabled></select>
+            <select id="docenteSelect" disabled></select>
           </label>
           <label class="pill"><input type="checkbox" id="incluyeTitular" checked> Incluir titular</label>
           <label class="pill"><input type="checkbox" id="incluyeSuplente" checked> Incluir suplente</label>
-          <button id="descargarBtn" aria-disabled="true" title="Descargar resultados" disabled>📥 Descargar CSV</button>
+          <button id="descargarBtn" disabled>📥 Descargar CSV</button>
         </div>
 
         <p class="hint">
-          Fuente <b>en línea</b>: Google Sheets publicado como <em>CSV</em> (solo lectura).<br/>
-          Encabezados esperados (insensibles a mayúsculas/acentos): <em>Sala/ Grado/ Año /Cargo</em>, <em>Materia</em>, <em>Cantidad Horas</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>, <em>%Antiguedad</em> (se muestra tal cual).
+          Lee en vivo desde Google Sheets publicado como <b>CSV</b> (solo lectura).<br>
+          Encabezados esperados: <em>Sala/ Grado/ Año /Cargo</em>, <em>Materia</em>, <em>Cantidad Horas</em>,
+          <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>, <em>%Antiguedad</em> (opcional).
         </p>
         <div id="status" class="hint"></div>
 
@@ -86,30 +80,34 @@
             <tbody></tbody>
           </table>
         </div>
-
-        <div class="footer">Todo sucede en tu navegador. No se sube nada a servidores.</div>
       </section>
 
       <aside class="card">
         <h3 style="margin-top:0">Notas</h3>
         <ul>
-          <li>La lista de docentes se arma con «Docente Titular» y «Docente Suplente» (o «Docente» si existe una sola).</li>
-          <li>%Antiguedad se muestra tal cual viene en el sheet (sin cálculos).</li>
+          <li>El combo se arma con <b>Docente Titular</b> y <b>Docente Suplente</b> (o <b>Docente</b>, si existe).</li>
+          <li>%Antigüedad se muestra <b>tal cual</b> viene del sheet.</li>
         </ul>
       </aside>
     </div>
   </main>
 
   <script>
-    // ===== CONFIG: URL CSV del Sheet publicado =====
+    // URL de tu sheet público en CSV
     const SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTscmx2DEPC37LAgT69CQUDHx-5U6aLo6dGFzMQGEBoM20Qw9ZJuSj_HzR-kt2CzkKKeBvUXzwiYJyO/pub?gid=300900649&single=true&output=csv";
 
-    // ===== Helpers =====
+    // Utilidades
     const el = id => document.getElementById(id);
-    const normalize = (s='') => s.toString().replace(/^\uFEFF/,'').normalize('NFD').replace(/\p{Diacritic}/gu,'').trim();
-    const normLower = (s='') => normalize(s).toLowerCase();
+    const normalize = s => s?.toString().replace(/^\uFEFF/,'').trim() ?? '';
+    const toNum = x => {
+      if(x==null || x==='') return 0;
+      const m = x.toString().replace(/,/g,'.').match(/-?\d+(?:[.,]\d+)?/);
+      return m ? Number(m[0].replace(',','.')) : 0;
+    };
+    const fmt = n => Intl.NumberFormat('es-AR').format(n||0);
 
-    const HEADER_ALIASES = {
+    // Detección robusta de encabezados
+    const HDRS = {
       grado:   ['sala/ grado/ año /cargo','sala/ grado/ año/cargo','grado','curso','año','anio','nivel'],
       materia: ['materia','asignatura','espacio curricular','area','área'],
       horas:   ['cantidad horas','cantidad de hora(s)','cantidad de horas','cantidad de hora','cant horas','horas','carga horaria','hs'],
@@ -120,196 +118,150 @@
       antig:   ['%antiguedad','% antiguedad','% antigüedad','antigüedad (%)','antiguedad (%)','antigüedad','antiguedad','antig.']
     };
 
-    let RAW_ROWS = []; // filas (array por índice)
-    let MAPPING  = {}; // clave -> índice
+    let RAW = [];   // filas como arrays
+    let MAP = {};   // clave -> índice
 
+    const low = s => normalize(s).toLowerCase();
     function detectHeaders(headers){
-      const lower = headers.map(h=>normLower(h));
+      const lower = headers.map(h=>low(h));
       const map = {};
-      for(const key in HEADER_ALIASES){
-        const candidates = HEADER_ALIASES[key].map(c=>normLower(c));
-        let idx = lower.findIndex(h=>candidates.includes(h));
-        if(idx===-1) idx = lower.findIndex(h=>candidates.some(c=>h.includes(c)));
+      for(const key in HDRS){
+        const cands = HDRS[key].map(low);
+        let idx = lower.findIndex(h => cands.includes(h));
+        if(idx===-1) idx = lower.findIndex(h => cands.some(c => h.includes(c)));
         map[key] = idx; // -1 si no está
       }
       return map;
     }
 
-    function parseNumber(x){
-      if(x==null || x==='') return 0;
-      const s = x.toString().replace(/,/g,'.').match(/-?\d+(?:[.,]\d+)?/);
-      return s ? Number(s[0].replace(',','.')) : 0;
-    }
-    const fmtInt = n => Intl.NumberFormat('es-AR').format(n||0);
-
-    function tipoCanonico(s){
-      const t = normLower(s);
-      return t.includes('extra') ? 'Extraprogramática' : 'Programática';
-    }
-
-    function rolEnFila(row, nombre){
-      const tit   = MAPPING.titular!==-1 ? (row[MAPPING.titular]||'') : '';
-      const sup   = MAPPING.suplente!==-1 ? (row[MAPPING.suplente]||'') : '';
-      const unico = MAPPING.docente !==-1 ? (row[MAPPING.docente ]||'') : '';
-      const roles = [];
-      if(tit && tit.trim() === nombre) roles.push('Titular');
-      if(sup && sup.trim() === nombre) roles.push('Suplente');
-      if(!roles.length && unico && unico.trim() === nombre) roles.push('Docente');
-      return roles;
-    }
-
-    function uniqueDocentes(rows){
+    function buildDocentes(rows){
       const set = new Set();
       rows.forEach(r=>{
-        const push = v => { const n = (v??'').toString().trim(); if(n) set.add(n); };
-        if(MAPPING.titular!==-1) push(r[MAPPING.titular]);
-        if(MAPPING.suplente!==-1) push(r[MAPPING.suplente]);
-        if(MAPPING.docente !==-1) push(r[MAPPING.docente ]);
+        const push = v => { const t = normalize(v); if(t) set.add(t); };
+        if(MAP.titular!==-1) push(r[MAP.titular]);
+        if(MAP.suplente!==-1) push(r[MAP.suplente]);
+        if(MAP.docente !==-1) push(r[MAP.docente ]);
       });
       return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
     }
 
-    function renderDocentes(options){
+    function renderDocentes(list){
       const sel = el('docenteSelect');
-      sel.innerHTML = '<option value="" disabled selected>Elegí un docente…</option>' + options.map(o=>`<option>${o}</option>`).join('');
-      sel.disabled = options.length===0;
+      sel.innerHTML = '<option value="" selected disabled>Elegí un docente…</option>' + list.map(n=>`<option>${n}</option>`).join('');
+      sel.disabled = list.length===0;
       el('descargarBtn').disabled = true;
     }
 
-    function filtrarPorDocente(nombre, {inclTit, inclSup}){
+    function tipoCanonico(s){ return low(s).includes('extra') ? 'Extraprogramática' : 'Programática'; }
+
+    function rolesDeFila(row, nombre){
+      const tit = MAP.titular!==-1 ? normalize(row[MAP.titular]) : '';
+      const sup = MAP.suplente!==-1 ? normalize(row[MAP.suplente]) : '';
+      const uno = MAP.docente !==-1 ? normalize(row[MAP.docente ]) : '';
+      const roles = [];
+      if(tit === nombre) roles.push('Titular');
+      if(sup === nombre) roles.push('Suplente');
+      if(!roles.length && uno === nombre) roles.push('Docente');
+      return roles;
+    }
+
+    function filtrar(nombre, {tit, sup}){
       const body = el('tabla').querySelector('tbody');
       body.innerHTML = '';
       let total=0, prog=0, extra=0;
-      const rowsOut=[];
+      const out=[];
 
-      RAW_ROWS.forEach(r=>{
-        const roles = rolEnFila(r, nombre);
+      RAW.forEach(r=>{
+        const roles = rolesDeFila(r, nombre);
         const esTit = roles.includes('Titular');
         const esSup = roles.includes('Suplente');
         const esDoc = roles.includes('Docente');
-        if((inclTit && esTit) || (inclSup && esSup) || esDoc){
-          const grado   = r[MAPPING.grado] ?? '';
-          const materia = r[MAPPING.materia] ?? '';
-          const horas   = parseNumber(r[MAPPING.horas]);
-          const tipo    = tipoCanonico(r[MAPPING.tipo] ?? 'Programática');
+        if((tit && esTit) || (sup && esSup) || esDoc){
+          const grado   = r[MAP.grado] ?? '';
+          const materia = r[MAP.materia] ?? '';
+          const horas   = toNum(r[MAP.horas]);
+          const tipo    = tipoCanonico(r[MAP.tipo] ?? 'Programática');
           const rol     = esTit && esSup ? 'Titular y Suplente' : esTit ? 'Titular' : esSup ? 'Suplente' : 'Docente';
-          const antig   = (MAPPING.antig!==-1) ? (r[MAPPING.antig] ?? '') : '';
+          const antig   = MAP.antig!==-1 ? (r[MAP.antig] ?? '') : '';
 
-          total += horas;
-          if(tipo.startsWith('Progr')) prog += horas; else extra += horas;
+          total += horas; (tipo.startsWith('Progr') ? (prog+=horas) : (extra+=horas));
 
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${grado}</td>
             <td>${materia}</td>
             <td class="nowrap">${horas}</td>
-            <td class="nowrap">${String(antig)}</td>
-            <td>${tipo === 'Programática' ? `<span class="tag prog">${tipo}</span>` : `<span class="tag extra">${tipo}</span>`}</td>
-            <td>${rol}</td>
-          `;
+            <td class="nowrap">${antig}</td>
+            <td>${tipo==='Programática' ? '<span class="tag prog">Programática</span>' : '<span class="tag extra">Extraprogramática</span>'}</td>
+            <td>${rol}</td>`;
           body.appendChild(tr);
 
-          rowsOut.push({Grado:grado, Materia:materia, Horas:horas, Antiguedad:String(antig), Tipo:tipo, Rol:rol});
+          out.push({Grado:grado,Materia:materia,Horas:horas,Antiguedad:antig,Tipo:tipo,Rol:rol});
         }
       });
 
-      el('kTotal').textContent = fmtInt(total);
-      el('kProg').textContent  = fmtInt(prog);
-      el('kExtra').textContent = fmtInt(extra);
+      el('kTotal').textContent = fmt(total);
+      el('kProg').textContent  = fmt(prog);
+      el('kExtra').textContent = fmt(extra);
       el('tabla').classList.toggle('hidden', body.children.length===0);
 
       const btn = el('descargarBtn');
       btn.disabled = body.children.length===0;
-      btn.onclick = () => descargarCSV(nombre, rowsOut, {total, prog, extra});
+      btn.onclick = ()=>{
+        const headers = ['Docente','Grado','Materia','Horas','%Antiguedad','Tipo','Rol'];
+        const rows = out.map(r=>[nombre,r.Grado,r.Materia,r.Horas,r.Antiguedad,r.Tipo,r.Rol]);
+        rows.unshift(headers);
+        const csv = rows.map(a=>a.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob); const a=document.createElement('a');
+        a.href=url; a.download=`reporte_${nombre.replace(/\s+/g,'_')}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      };
     }
 
-    function descargarCSV(nombre, rows, sums){
-      const encabezados = ['Docente','Grado','Materia','Horas','%Antiguedad','Tipo','Rol'];
-      const data = rows.map(r=>[nombre,r.Grado,r.Materia,r.Horas,r.Antiguedad,r.Tipo,r.Rol]);
-      data.unshift(encabezados);
-      data.push([]);
-      data.push(['TOTAL','','',sums.total,'','','']);
-      data.push(['Programaticas','','',sums.prog,'','','']);
-      data.push(['Extraprogramaticas','','',sums.extra,'','','']);
-      const csv = data.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `reporte_${nombre.replace(/\s+/g,'_')}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    }
+    async function cargarCSV(url){
+      el('status').textContent = 'Descargando CSV…';
+      const res = await fetch(url,{cache:'no-store'});
+      if(!res.ok){ el('status').innerHTML = '<span class="danger">HTTP '+res.status+'</span>'; return; }
+      const txt = await res.text();
 
-    async function cargarDesdeURL(url){
-      try{
-        el('status').textContent = 'Descargando CSV…';
-        const res = await fetch(url,{cache:'no-store'});
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const txt = await res.text();
+      // 1) Parse con header:true
+      let p = Papa.parse(txt,{header:true, skipEmptyLines:true, delimiter:'auto'});
+      let fields = p?.meta?.fields || [];
+      let rows   = p?.data || [];
 
-        // 1) header:true
-        let parsed = Papa.parse(txt,{header:true, skipEmptyLines:true, delimiter:'auto'});
-        let fields = parsed?.meta?.fields || [];
-        let rows   = parsed?.data || [];
-
-        // 2) fallback: header:false -> primera fila como encabezados
-        if(!fields.length){
-          const p2 = Papa.parse(txt,{header:false, skipEmptyLines:true, delimiter:'auto'});
-          if(Array.isArray(p2.data) && p2.data.length>1){
-            const first = p2.data[0].map(x=>String(x||''));
-            const looksHeader = first.some(x=>isNaN(parseFloat(x)) && x.length>0);
-            const hdrs = looksHeader ? first : first.map((_,i)=>`Columna_${i+1}`);
-            fields = hdrs;
-            rows = p2.data.slice(1).map(arr=>{ const o={}; hdrs.forEach((h,i)=>o[h]=arr[i]); return o; });
-          }
+      // 2) Fallback si viniera sin encabezados
+      if(!fields.length){
+        const p2 = Papa.parse(txt,{header:false, skipEmptyLines:true, delimiter:'auto'});
+        if(Array.isArray(p2.data) && p2.data.length>1){
+          const hdrs = p2.data[0].map(x=>String(x||'')); fields = hdrs;
+          rows = p2.data.slice(1).map(arr=>{ const o={}; hdrs.forEach((h,i)=>o[h]=arr[i]); return o; });
         }
-
-        if(!fields.length){
-          el('status').innerHTML = '<span class="danger">No pude leer encabezados del CSV remoto.</span>';
-          return;
-        }
-
-        prepararDatos(rows, fields);
-        el('status').textContent = `CSV cargado. Filas: ${rows.length}. Encabezados: ${fields.join(' | ')}`;
-      }catch(e){
-        el('status').innerHTML = '<span class="danger">No pude traer la base: '+(e?.message||e)+'</span>';
       }
-    }
+      if(!fields.length){ el('status').innerHTML = '<span class="danger">No pude leer encabezados.</span>'; return; }
 
-    function prepararDatos(rows, fields){
-      MAPPING = detectHeaders(fields);
-      const requiredBase = ['grado','materia','horas','tipo'];
-      const requiredRol = (MAPPING.titular===-1 && MAPPING.suplente===-1) ? ['docente'] : [];
-      const faltantes = [...requiredBase, ...requiredRol].filter(k=>MAPPING[k]===-1);
-      if(faltantes.length){
-        el('status').innerHTML = 'Encabezados faltantes o no reconocidos: <b>'+faltantes.join(', ')+'</b>.';
-      }
-      RAW_ROWS = rows.map(row => fields.map(h=>row[h]));
-      const docentes = uniqueDocentes(RAW_ROWS);
+      MAP = detectHeaders(fields);
+      RAW = rows.map(row => fields.map(h => row[h]));
+
+      const docentes = buildDocentes(RAW);
       renderDocentes(docentes);
-      if(!docentes.length){
-        el('status').innerHTML += ' · <span class="danger">No detecté docentes. Revisá columnas “Docente”, “Docente Titular” o “Docente Suplente”.</span>';
-      }
+      el('status').textContent = `CSV cargado. Filas: ${rows.length}. Docentes: ${docentes.length}.`;
     }
 
-    // ===== Eventos =====
-    const docenteSelect = el('docenteSelect');
-    docenteSelect.addEventListener('change', ()=>{
-      const nombre = docenteSelect.value;
+    // Eventos
+    el('docenteSelect').addEventListener('change', ()=>{
+      const nombre = el('docenteSelect').value;
       if(!nombre) return;
-      filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+      filtrar(nombre, {tit: el('incluyeTitular').checked, sup: el('incluyeSuplente').checked});
     });
-
     ['incluyeTitular','incluyeSuplente'].forEach(id=>{
       el(id).addEventListener('change', ()=>{
-        const nombre = docenteSelect.value;
-        if(nombre) filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
+        const n = el('docenteSelect').value;
+        if(n) filtrar(n, {tit: el('incluyeTitular').checked, sup: el('incluyeSuplente').checked});
       });
     });
 
     // Arranque
-    window.addEventListener('DOMContentLoaded', ()=>{ cargarDesdeURL(SHEETS_CSV_URL); });
+    window.addEventListener('DOMContentLoaded', ()=>{ cargarCSV(SHEETS_CSV_URL); });
   </script>
 </body>
 </html>
-
