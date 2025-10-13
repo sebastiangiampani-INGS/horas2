@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sistema de Gestión Docente</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <!-- Cargar PapaParse: OJO, sin código dentro de este tag -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     :root{ --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#38bdf8; --good:#22c55e; --warn:#f59e0b; }
@@ -19,7 +18,8 @@
     @media(min-width:920px){.grid{grid-template-columns:2fr 1fr}}
     .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .pill{border:1px solid #374151;background:#0b1220;color:var(--text);padding:10px 12px;border-radius:12px}
+    .pill{border:1px solid #374151;background:#0b1220;color:var(--text);padding:10px 12px;border-radius:12px;display:flex;gap:8px;align-items:center}
+    .pill input[type="text"]{all:unset}
     select, button{all:unset}
     select{cursor:pointer}
     button{cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:var(--accent);color:#00121c;font-weight:700}
@@ -28,7 +28,7 @@
     th, td{padding:10px 8px;border-bottom:1px solid #243244}
     th{text-align:left;color:#cbd5e1;font-size:13px}
     td{font-size:14px}
-    .kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:8px}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
     .kpi .box{background:#0b1220;border:1px solid #223049;border-radius:14px;padding:12px}
     .box .label{color:#a1a1aa;font-size:12px}
     .box .value{font-size:22px;font-weight:700}
@@ -51,6 +51,9 @@
     <div class="grid">
       <section class="card">
         <div class="controls">
+          <label class="pill">Buscar:
+            <input id="buscarDocente" type="text" placeholder="Escribí nombre o apellido…" />
+          </label>
           <label class="pill">Docente:
             <select id="docenteSelect" title="Seleccioná un docente" disabled></select>
           </label>
@@ -58,9 +61,10 @@
           <label class="pill"><input type="checkbox" id="incluyeSuplente" checked> Incluir suplente</label>
           <button id="descargarBtn" aria-disabled="true" title="Descargar resultados" disabled>📥 Descargar CSV</button>
         </div>
+
         <p class="hint">
           Fuente <b>en línea</b>: Google Sheets publicado como <em>CSV</em> (solo lectura).<br/>
-          Encabezados esperados: <em>Grado</em>, <em>Materia</em>, <em>Cantidad de Hora(s)</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>, <em>Antigüedad (%)</em> (opcional).
+          Encabezados esperados (insensibles a mayúsculas/acentos): <em>Sala/ Grado/ Año /Cargo</em>, <em>Materia</em>, <em>Cantidad Horas</em>, <em>Docente Titular</em>, <em>Docente Suplente</em>, <em>Tipo de hora</em>, <em>%Antiguedad</em>.
         </p>
         <div id="status" class="hint"></div>
 
@@ -68,8 +72,6 @@
           <div class="box"><div class="label">Total de horas</div><div id="kTotal" class="value">—</div></div>
           <div class="box"><div class="label">Programáticas</div><div id="kProg" class="value">—</div></div>
           <div class="box"><div class="label">Extraprogramáticas</div><div id="kExtra" class="value">—</div></div>
-          <div class="box"><div class="label">Antigüedad prom.</div><div id="kAntAvg" class="value">—</div></div>
-          <div class="box"><div class="label">Antigüedad ponderada</div><div id="kAntW" class="value">—</div></div>
         </div>
 
         <div style="margin-top:16px;overflow:auto">
@@ -79,7 +81,7 @@
                 <th>Grado</th>
                 <th>Materia</th>
                 <th class="nowrap">Cantidad de horas</th>
-                <th>Antigüedad (%)</th>
+                <th>% Antigüedad</th>
                 <th>Tipo</th>
                 <th>Rol</th>
               </tr>
@@ -94,58 +96,47 @@
       <aside class="card">
         <h3 style="margin-top:0">Notas</h3>
         <ul>
-          <li>Funciona con Titular/Suplente o con una sola columna «Docente».</li>
-          <li>La **Antigüedad (%)** es opcional; si falta, muestra “—”.</li>
-          <li>Promedio ponderado usa horas como peso.</li>
+          <li>Filtra por <b>nombre exacto</b> del combo (el buscador te ayuda a localizarlo).</li>
+          <li>% Antigüedad se muestra <b>exactamente</b> como figura en la planilla (sin cálculos).</li>
+          <li>Si usan solo una columna “Docente”, también la detecta.</li>
         </ul>
       </aside>
     </div>
   </main>
 
   <script>
-    // ========= CONFIG =========
+    // ===== CONFIG: URL CSV (publicado en la web) =====
     const SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTscmx2DEPC37LAgT69CQUDHx-5U6aLo6dGFzMQGEBoM20Qw9ZJuSj_HzR-kt2CzkKKeBvUXzwiYJyO/pub?gid=300900649&single=true&output=csv";
 
-    // ========= HELPERS =========
+    // ===== Helpers =====
     const el = id => document.getElementById(id);
 
-    // Normaliza: quita BOM, acentos, puntuación, colapsa espacios
-    const normalize = (s='') =>
-      s.toString()
-       .replace(/^\uFEFF/,'')
-       .normalize('NFD')
-       .replace(/\p{Diacritic}/gu,'')
-       .replace(/[.,;:()\[\]"']/g,' ')
-       .replace(/\s+/g,' ')
-       .trim();
+    // Normaliza: quita BOM, acentos, puntuación suelta y colapsa espacios
+    const normalize = (s='') => s.toString()
+      .replace(/^\uFEFF/,'')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu,'')
+      .replace(/[.,;:()\[\]"']/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
 
     const normLower = (s='') => normalize(s).toLowerCase();
 
-    // Match robusto de nombres: soporta "Apellido, Nombre" vs "Nombre Apellido"
-    function nameMatch(a,b){
-      const A = normLower(a), B = normLower(b);
-      if(!A || !B) return false;
-      if(A===B) return true;
-      if(A.includes(B) || B.includes(A)) return true;
-      const ta = new Set(A.split(' ').filter(Boolean));
-      const tb = new Set(B.split(' ').filter(Boolean));
-      let hits=0; ta.forEach(t=>{ if(tb.has(t)) hits++; });
-      return hits >= Math.min(2, Math.min(ta.size, tb.size));
-    }
-
+    // Aliases de encabezados (incluye los tuyos)
     const HEADER_ALIASES = {
-      grado:   ['grado','grados','curso','año','anio','nivel'],
+      grado:   ['sala/ grado/ año /cargo','sala/ grado/ año/cargo','grado','curso','año','anio','nivel'],
       materia: ['materia','asignatura','espacio curricular','area','área'],
-      horas:   ['cantidad de hora(s)','cantidad de horas','cantidad de hora','cant horas','horas','carga horaria','hs'],
+      horas:   ['cantidad horas','cantidad de hora(s)','cantidad de horas','cant horas','horas','carga horaria','hs'],
       titular: ['docente titular','titular'],
       suplente:['docente suplente','suplente'],
       docente: ['docente','profesor','profesora','apellido y nombre','ap. y nom.','nombre docente'],
       tipo:    ['tipo de hora','tipo','modalidad','caracter','carácter','programatica','programática','extraprogramatica','extraprogramática'],
-      antig:   ['antigüedad (%)','antiguedad (%)','antigüedad','antiguedad','antig.','antig %','% antig','antiguedad %']
+      antig:   ['%antiguedad','% antiguedad','% antigüedad','antigüedad (%)','antiguedad (%)','antigüedad','antiguedad','antig.']
     };
 
-    let RAW_ROWS = []; // matriz de datos (por índice de columna)
-    let MAPPING = {};  // clave -> índice
+    let RAW_ROWS = [];     // matriz de filas (por índice de columna)
+    let MAPPING  = {};     // clave -> índice
+    let DOCENTES_ALL = []; // lista completa para combo
 
     function detectHeaders(headers){
       const lower = headers.map(h=>normLower(h));
@@ -154,18 +145,17 @@
         const candidates = HEADER_ALIASES[key].map(c=>normLower(c));
         let idx = lower.findIndex(h=>candidates.includes(h));
         if(idx===-1) idx = lower.findIndex(h=>candidates.some(c=>h.includes(c)));
-        map[key] = idx; // -1 si no lo encontró
+        map[key] = idx; // -1 si no está
       }
       return map;
     }
 
     function parseNumber(x){
       if(x==null || x==='') return 0;
-      const s = x.toString().replace('%','').replace(/,/g,'.').match(/-?\d+(?:[.,]\d+)?/);
+      const s = x.toString().replace(/,/g,'.').match(/-?\d+(?:[.,]\d+)?/);
       return s ? Number(s[0].replace(',','.')) : 0;
     }
     const fmtInt = n => Intl.NumberFormat('es-AR').format(n||0);
-    const fmtPct = n => (Number.isFinite(n) ? `${n.toFixed(1)}%` : '—');
 
     function tipoCanonico(s){
       const t = normLower(s);
@@ -177,16 +167,16 @@
       const sup   = MAPPING.suplente!==-1 ? (row[MAPPING.suplente]||'') : '';
       const unico = MAPPING.docente !==-1 ? (row[MAPPING.docente ]||'') : '';
       const roles = [];
-      if(tit && nameMatch(tit, nombre)) roles.push('Titular');
-      if(sup && nameMatch(sup, nombre)) roles.push('Suplente');
-      if(!roles.length && unico && nameMatch(unico, nombre)) roles.push('Docente');
+      if(tit && tit === nombre) roles.push('Titular');           // exacto desde combo
+      if(sup && sup === nombre) roles.push('Suplente');
+      if(!roles.length && unico && unico === nombre) roles.push('Docente');
       return roles;
     }
 
     function uniqueDocentes(rows){
       const set = new Set();
       rows.forEach(r=>{
-        const push = v => { const n = normalize(v||''); if(n) set.add(n); };
+        const push = v => { const n = (v??'').toString().trim(); if(n) set.add(n); }; // sin normalizar: preserva texto exacto
         if(MAPPING.titular!==-1) push(r[MAPPING.titular]);
         if(MAPPING.suplente!==-1) push(r[MAPPING.suplente]);
         if(MAPPING.docente !==-1) push(r[MAPPING.docente ]);
@@ -194,10 +184,14 @@
       return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
     }
 
-    function renderDocentes(options){
+    function renderDocentes(options, keepSelected=true){
       const sel = el('docenteSelect');
+      const current = sel.value;
       sel.innerHTML = '<option value="" disabled selected>Elegí un docente…</option>' + options.map(o=>`<option>${o}</option>`).join('');
       sel.disabled = options.length===0;
+      if(keepSelected && current && options.includes(current)){
+        sel.value = current;
+      }
       el('descargarBtn').disabled = true;
     }
 
@@ -205,7 +199,6 @@
       const body = el('tabla').querySelector('tbody');
       body.innerHTML = '';
       let total=0, prog=0, extra=0;
-      let antSum=0, antCount=0, antWeighted=0;
       const rowsOut=[];
 
       RAW_ROWS.forEach(r=>{
@@ -219,54 +212,45 @@
           const horas   = parseNumber(r[MAPPING.horas]);
           const tipo    = tipoCanonico(r[MAPPING.tipo] ?? 'Programática');
           const rol     = esTit && esSup ? 'Titular y Suplente' : esTit ? 'Titular' : esSup ? 'Suplente' : 'Docente';
-          const antig   = (MAPPING.antig!==-1) ? parseNumber(r[MAPPING.antig]) : NaN;
+          const antig   = (MAPPING.antig!==-1) ? (r[MAPPING.antig] ?? '') : '';
 
           total += horas;
           if(tipo.startsWith('Progr')) prog += horas; else extra += horas;
-          if(Number.isFinite(antig)){ antSum += antig; antCount += 1; antWeighted += antig * (horas||1); }
 
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${grado}</td>
             <td>${materia}</td>
             <td class="nowrap">${horas}</td>
-            <td class="nowrap">${Number.isFinite(antig)? antig+'%' : '—'}</td>
+            <td class="nowrap">${String(antig)}</td>
             <td>${tipo === 'Programática' ? `<span class="tag prog">${tipo}</span>` : `<span class="tag extra">${tipo}</span>`}</td>
             <td>${rol}</td>
           `;
           body.appendChild(tr);
 
-          rowsOut.push({Grado:grado, Materia:materia, Horas:horas, Antiguedad: Number.isFinite(antig)?antig:'', Tipo:tipo, Rol:rol});
+          rowsOut.push({Grado:grado, Materia:materia, Horas:horas, Antiguedad: String(antig), Tipo:tipo, Rol:rol});
         }
       });
 
       el('kTotal').textContent = fmtInt(total);
       el('kProg').textContent  = fmtInt(prog);
       el('kExtra').textContent = fmtInt(extra);
-      const antAvg = antCount ? (antSum/antCount) : NaN;
-      const antW   = total ? (antWeighted/total) : NaN;
-      el('kAntAvg').textContent = fmtPct(antAvg);
-      el('kAntW').textContent   = fmtPct(antW);
 
       el('tabla').classList.toggle('hidden', body.children.length===0);
 
       const btn = el('descargarBtn');
       btn.disabled = body.children.length===0;
-      btn.onclick = () => descargarCSV(nombre, rowsOut, {total, prog, extra, antAvg, antW});
+      btn.onclick = () => descargarCSV(nombre, rowsOut, {total, prog, extra});
     }
 
     function descargarCSV(nombre, rows, sums){
-      const encabezados = ['Docente','Grado','Materia','Horas','Antigüedad (%)','Tipo','Rol'];
+      const encabezados = ['Docente','Grado','Materia','Horas','%Antiguedad','Tipo','Rol'];
       const data = rows.map(r=>[nombre,r.Grado,r.Materia,r.Horas,r.Antiguedad,r.Tipo,r.Rol]);
       data.unshift(encabezados);
       data.push([]);
       data.push(['TOTAL','','',sums.total,'','','']);
       data.push(['Programaticas','','',sums.prog,'','','']);
       data.push(['Extraprogramaticas','','',sums.extra,'','','']);
-      if(Number.isFinite(sums.antAvg) || Number.isFinite(sums.antW)){
-        data.push(['Antigüedad promedio','','','', Number.isFinite(sums.antAvg)? sums.antAvg.toFixed(1)+'%':'','','']);
-        data.push(['Antigüedad ponderada','','','', Number.isFinite(sums.antW)? sums.antW.toFixed(1)+'%':'','','']);
-      }
       const csv = data.map(row=>row.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
@@ -288,11 +272,11 @@
         let fields = parsed?.meta?.fields || [];
         let rows   = parsed?.data || [];
 
-        // 2) fallback: header:false -> primera fila como encabezados
+        // 2) fallback: header:false -> usar primera fila como encabezados
         if(!fields.length){
           const p2 = Papa.parse(txt,{header:false, skipEmptyLines:true, delimiter:'auto'});
           if(Array.isArray(p2.data) && p2.data.length>1){
-            const first = p2.data[0].map(x=>String(x||''));
+            const first = p2.data[0].map(x=>String(x||'')); // conserva formato
             const looksHeader = first.some(x=>isNaN(parseFloat(x)) && x.length>0);
             const hdrs = looksHeader ? first : first.map((_,i)=>`Columna_${i+1}`);
             fields = hdrs;
@@ -321,27 +305,55 @@
         el('status').innerHTML = 'Encabezados faltantes o no reconocidos: <b>'+faltantes.join(', ')+'</b>.';
       }
       RAW_ROWS = rows.map(row => fields.map(h=>row[h]));
-      const docentes = uniqueDocentes(RAW_ROWS);
-      renderDocentes(docentes);
-      if(!docentes.length){
-        el('status').innerHTML += ' · <span class="danger">No detecté nombres de docentes. Revisá columnas “Docente”, “Docente Titular” o “Docente Suplente”.</span>';
+      DOCENTES_ALL = uniqueDocentes(RAW_ROWS); // lista exacta, sin normalizar
+      renderDocentes(DOCENTES_ALL);
+      if(!DOCENTES_ALL.length){
+        el('status').innerHTML += ' · <span class="danger">No detecté docentes. Revisá columnas “Docente”, “Docente Titular” o “Docente Suplente”.</span>';
       }
     }
 
-    // ========= EVENTOS =========
-    el('docenteSelect').addEventListener('change', ()=>{
-      const nombre = el('docenteSelect').value;
+    // ===== Eventos UI =====
+    const docenteSelect = el('docenteSelect');
+    const buscarInput = el('buscarDocente');
+
+    docenteSelect.addEventListener('change', ()=>{
+      const nombre = docenteSelect.value;
       if(!nombre) return;
       filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
     });
+
     ['incluyeTitular','incluyeSuplente'].forEach(id=>{
       el(id).addEventListener('change', ()=>{
-        const nombre = el('docenteSelect').value;
+        const nombre = docenteSelect.value;
         if(nombre) filtrarPorDocente(nombre, {inclTit: el('incluyeTitular').checked, inclSup: el('incluyeSuplente').checked});
       });
     });
 
-    // ========= ARRANQUE =========
+    // Búsqueda en vivo: filtra la lista del combo (no aplica substring al conteo)
+    function applySearch(){
+      const q = buscarInput.value.trim().toLowerCase();
+      if(!q){
+        renderDocentes(DOCENTES_ALL, false);
+        return;
+      }
+      const filtrados = DOCENTES_ALL.filter(n => n.toLowerCase().includes(q));
+      renderDocentes(filtrados, false);
+    }
+    buscarInput.addEventListener('input', applySearch);
+
+    // Enter: si hay coincidencias en el combo, toma la primera
+    buscarInput.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        const sel = el('docenteSelect');
+        const firstOpt = sel.querySelector('option:nth-child(2)');
+        if(firstOpt){
+          sel.value = firstOpt.value;
+          sel.dispatchEvent(new Event('change'));
+        }
+      }
+    });
+
+    // Arranque
     window.addEventListener('DOMContentLoaded', ()=>{ cargarDesdeURL(SHEETS_CSV_URL); });
   </script>
 </body>
